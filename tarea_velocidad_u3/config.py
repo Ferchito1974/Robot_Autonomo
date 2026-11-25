@@ -58,10 +58,12 @@ TRAJ_OMNI = {
 }
 # Speed profiles (omni). Profile 1 is the base one (floors with more slip); the others are faster.
 PROFILES = [
-    {"name": "1 Base (piso que derrapa)", "v": 0.50, "acc": 1.5},
-    {"name": "2 Medio",                   "v": 0.65, "acc": 2.0},
-    {"name": "3 Rápido",                  "v": 0.75, "acc": 2.2},
-    {"name": "4 Muy rápido",              "v": 0.85, "acc": 2.5},     # 0.95 saturated 30 % on the real robot
+    # acc = PEAK acceleration of the S-curve ramps. Real 25-nov: heading kicks of 5-17 deg with
+    # 1.5-2.0 m/s^2 and 28-44 deg with 2.2-2.5 m/s^2 (wheel slip when accelerating).
+    {"name": "1 Base (piso que derrapa)", "v": 0.50, "acc": 1.2},
+    {"name": "2 Medio",                   "v": 0.65, "acc": 1.5},
+    {"name": "3 Rápido",                  "v": 0.75, "acc": 1.8},
+    {"name": "4 Muy rápido",              "v": 0.85, "acc": 2.0},     # 0.95 saturated 30 % on the real robot
 ]
 K_HEAD = 4.0                      # heading hold (omni mode): w = K_HEAD e + KI_HEAD int(e), e = 0 - theta
 KI_HEAD = 2.0                     # real 25-nov: P 2.0 let the heading swing +-25 deg at 0.8 m/s;
@@ -88,7 +90,9 @@ K_LIN = 1.0                       # PENDING: measure a straight run with a tape
 FF_LOOKAHEAD_S = 0.10             # feedforward uses the reference this far ahead (delay compensation;
                                   # sim: wheel error 22 -> 7 RPM RMS on the omni square)
 
-EDITABLE = {"heading_source": "gyro", "k_head": K_HEAD, "ki_head": KI_HEAD, "ff_lookahead": FF_LOOKAHEAD_S, "k_rot": K_ROT, "k_lin": K_LIN, "acc_max": ACC_MAX, "alpha_max": ALPHA_MAX, "start_pwm": START_PWM, "i_max": I_MAX_PWM,
+S_CURVE = 1.0                     # 1: S-shaped ramps (finite jerk), 0: linear ramps
+
+EDITABLE = {"s_curve": S_CURVE, "heading_source": "gyro", "k_head": K_HEAD, "ki_head": KI_HEAD, "ff_lookahead": FF_LOOKAHEAD_S, "k_rot": K_ROT, "k_lin": K_LIN, "acc_max": ACC_MAX, "alpha_max": ALPHA_MAX, "start_pwm": START_PWM, "i_max": I_MAX_PWM,
             "rest_before_s": REST_BEFORE_S, "ff_offset": list(FF_OFFSET_PWM), "ff_k": list(FF_K_RPM_PER_PWM)}
 
 # ── Safety ───────────────────────────────────────────────────────────────

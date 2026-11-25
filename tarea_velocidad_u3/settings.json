@@ -1,23 +1,24 @@
 {
   "heading_source": "gyro",
   "k_head": 4.0,
+  "ki_head": 2.0,
+  "ff_lookahead": 0.1,
   "k_rot": 1.091,
   "k_lin": 1.0595,
-  "acc_max": 1.5,
+  "acc_max": 1.2,
   "alpha_max": 12.0,
   "start_pwm": 35.0,
   "i_max": 120.0,
   "rest_before_s": 1.5,
   "ff_offset": [
-    5.2,
-    6.7,
-    9.7
+    0.0,
+    8.9,
+    17.6
   ],
   "ff_k": [
-    2.375,
-    2.271,
-    2.22
+    2.002,
+    2.32,
+    2.38
   ],
-  "ff_lookahead": 0.1,
-  "ki_head": 2.0
+  "s_curve": 1.0
 }

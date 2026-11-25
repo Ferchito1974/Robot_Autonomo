@@ -1,0 +1,70 @@
+{
+  "duration_s": 4.728,
+  "wheel1_err_rms_rpm": 22.9937969007394,
+  "wheel1_ss_err_rpm": null,
+  "wheel1_ref_mean_abs": 205.12706843182943,
+  "wheel2_err_rms_rpm": 28.595519940940203,
+  "wheel2_ss_err_rpm": null,
+  "wheel2_ref_mean_abs": 174.69658920002914,
+  "wheel3_err_rms_rpm": 33.85258822704581,
+  "wheel3_ss_err_rpm": null,
+  "wheel3_ref_mean_abs": 171.0178309877072,
+  "pwm_saturated_pct": 0.0,
+  "v_err_rms": 0.056828013467106676,
+  "w_err_rms": 0.602678890534921,
+  "v_lat_rms": 0.4560594104893203,
+  "path_dev_rms_m": 0.006824939205896126,
+  "path_dev_max_m": 0.014169594886596321,
+  "final_x": 0.01104415660106075,
+  "final_y": 0.003114182659951836,
+  "final_x_ideal": 0.00040249333911773636,
+  "final_y_ideal": 0.00015614804660146357,
+  "final_pos_err_m": 0.01104513312524419,
+  "final_th_deg": -0.2506600000000025,
+  "final_th_ideal_deg": 0.0,
+  "final_th_enc_deg": -60.67530916676398,
+  "final_th_gyro_deg": -0.2506600000000025,
+  "distance_m": 2.246370761782953,
+  "run_id": "circle_omni_PID_20261125_030212",
+  "kind": "circle",
+  "params": {
+    "v": 0.65,
+    "radius": 0.35,
+    "turns": 1.0
+  },
+  "ctrl": "PID",
+  "mode": "omni",
+  "gains": {
+    "kp": 0.3,
+    "ki": 4.0,
+    "kd": 0.0,
+    "ff": true
+  },
+  "label": "circle PID",
+  "settings": {
+    "heading_source": "gyro",
+    "k_head": 4.0,
+    "ki_head": 2.0,
+    "ff_lookahead": 0.1,
+    "k_rot": 1.091,
+    "k_lin": 1.0595,
+    "acc_max": 2.0,
+    "alpha_max": 12.0,
+    "start_pwm": 35.0,
+    "i_max": 120.0,
+    "rest_before_s": 1.5,
+    "ff_offset": [
+      5.2,
+      6.7,
+      9.7
+    ],
+    "ff_k": [
+      2.375,
+      2.271,
+      2.22
+    ]
+  },
+  "result": "completada",
+  "real": true,
+  "date": "2026-11-25T03:02:18"
+}

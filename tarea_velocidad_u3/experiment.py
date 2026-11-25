@@ -70,8 +70,9 @@ class Experiment:
             self.st["acc_max"] = float(acc)          # speed profile of this run
         self.rev_n, self.sat_n = [0, 0, 0], [0, 0, 0]
         self.head_i = 0.0                                # integral of the heading error (omni mode)
-        self.ref = (trajectories.OmniReference(kind, params, self.st["acc_max"]) if mode == "omni" else
-                    trajectories.Reference(kind, params, self.st["acc_max"], self.st["alpha_max"]))
+        smooth = self.st["s_curve"] >= 0.5
+        self.ref = (trajectories.OmniReference(kind, params, self.st["acc_max"], smooth) if mode == "omni" else
+                    trajectories.Reference(kind, params, self.st["acc_max"], self.st["alpha_max"], smooth))
         self.ctrls = controller.make(ctrl, gains["kp"], gains.get("ki", 0.0), gains.get("kd", 0.0), gains.get("ff", True),
                                      self.st)
         self.est = None

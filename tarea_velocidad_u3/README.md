@@ -80,10 +80,14 @@ Requisitos: Python 3.11 con `flask`, `numpy`, `matplotlib`, `pyserial`
 
 | Perfil | v | Aceleración | Uso |
 |---|---|---|---|
-| 1 Base | 0.50 m/s | 1.5 m/s² | Pisos que derrapan |
-| 2 Medio | 0.65 m/s | 2.0 m/s² | |
-| 3 Rápido | 0.75 m/s | 2.2 m/s² | |
-| 4 Muy rápido | 0.85 m/s | 2.5 m/s² | Piso liso (a 0.95 m/s las ruedas saturaban 30 % del tiempo) |
+| 1 Base | 0.50 m/s | 1.2 m/s² | Pisos que derrapan |
+| 2 Medio | 0.65 m/s | 1.5 m/s² | |
+| 3 Rápido | 0.75 m/s | 1.8 m/s² | |
+| 4 Muy rápido | 0.85 m/s | 2.0 m/s² | Piso liso (a 0.95 m/s las ruedas saturaban 30 % del tiempo) |
+
+Las rampas son **en S** (jerk limitado): la aceleración sube gradualmente, lo que reduce el derrape
+al arrancar. En el robot real, con aceleraciones de 2.2 a 2.5 m/s² el robot giraba 28 a 44° por
+derrape al iniciar cada lado del cuadrado; con 1.5 a 2.0 m/s², 5 a 17°.
 
 ---
 
@@ -106,6 +110,10 @@ Requisitos: Python 3.11 con `flask`, `numpy`, `matplotlib`, `pyserial`
 | Círculo omni R 0.35 m, 0.5 m/s | PID | 0.8 a 1.0 cm | 0 a 2° | 13 a 16 RPM |
 
 Las posiciones son la estimación de odometría (encoders + giroscopio) con k_lin = 1.06 calibrado con cinta.
+
+**Efecto del feedforward** (cuadrado omni, PID Kp 0.3 Ki 4): con FF el error de rueda es de 24 a 45 RPM
+y la desviación de trayectoria de 0.7 a 2 cm; sin FF, 61 a 89 RPM y 4 a 7 cm (la rueda va ~140 ms
+atrasada porque el PID tiene que generar todo el PWM a partir del error).
 
 ---
 

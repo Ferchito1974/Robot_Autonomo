@@ -97,6 +97,7 @@
       <button class="big" id="stop">STOP</button>
       <div id="msg"></div>
       <details style="margin-top:8px"><summary>Ajustes avanzados</summary>
+        <label>Rampas en S (menos derrape) <input id="s_s_curve" type="checkbox"></label>
         <label>Anticipación del feedforward [s] <input id="s_ff_lookahead" type="number" step="0.02"></label>
         <label>Rumbo omni Kp [1/s] <input id="s_k_head" type="number" step="0.5"></label>
         <label>Rumbo omni Ki [1/s²] <input id="s_ki_head" type="number" step="0.5"></label>
@@ -178,13 +179,14 @@ $("go").onclick = async () => {
 };
 const SK = ["ff_lookahead","k_head","ki_head","k_rot","k_lin","acc_max","alpha_max","start_pwm","i_max","rest_before_s"];
 function fillSettings(st) {
+  $("s_s_curve").checked = st.s_curve >= 0.5;
   $("hsrc").value = st.heading_source;
   $("odok").textContent = `k_lin = ${st.k_lin}   k_rot = ${st.k_rot}`;
   SK.forEach(k => $("s_"+k).value = st[k]);
   [0,1,2].forEach(i => { $("s_off"+i).value = st.ff_offset[i]; $("s_k"+i).value = st.ff_k[i]; });
 }
 $("savest").onclick = async () => {
-  const d = {}; SK.forEach(k => d[k] = parseFloat($("s_"+k).value));
+  const d = {}; SK.forEach(k => d[k] = parseFloat($("s_"+k).value)); d.s_curve = $("s_s_curve").checked ? 1 : 0;
   d.ff_offset = [0,1,2].map(i => parseFloat($("s_off"+i).value)); d.ff_k = [0,1,2].map(i => parseFloat($("s_k"+i).value));
   const r = await post("/api/settings", d);
   $("stmsg").textContent = r.ok ? "Guardado" : "Error: " + r.error; if (r.settings) fillSettings(r.settings);
