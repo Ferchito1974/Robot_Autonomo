@@ -1,0 +1,11 @@
+# Python / runtime
+__pycache__/
+*.pyc
+venv/
+app.log
+app.pid
+*.log
+
+# Virtual robot runs and quick tests
+**/runs/demo_*
+**/runs/lifted_*

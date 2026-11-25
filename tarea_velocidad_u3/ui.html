@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMR U3 - Control de velocidad</title>
+<style>
+  :root { --bg:#f8fafc; --card:#fff; --ink:#0f172a; --mute:#64748b; --line:#e2e8f0; --ok:#16a34a; --bad:#dc2626; --acc:#2563eb; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:12px 16px; background:#0f172a; color:#fff; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:17px; margin:0; }
+  .pill { padding:3px 10px; border-radius:99px; font-size:13px; background:#334155; }
+  .pill.ok { background:var(--ok); } .pill.bad { background:var(--bad); }
+  main { display:grid; grid-template-columns: 330px 1fr; gap:14px; padding:14px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  h2 { font-size:14px; margin:0 0 8px; color:var(--mute); text-transform:uppercase; letter-spacing:.04em; }
+  label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:5px 0; font-size:14px; }
+  input[type=number] { width:90px; padding:4px; }
+  select { padding:4px; }
+  .seg { display:flex; gap:6px; margin-bottom:6px; }
+  .seg button { flex:1; padding:7px; border:1px solid var(--line); background:#fff; border-radius:7px; cursor:pointer; }
+  .seg button.on { background:var(--acc); color:#fff; border-color:var(--acc); }
+  .big { width:100%; padding:12px; font-size:16px; border:0; border-radius:8px; cursor:pointer; margin-top:8px; color:#fff; }
+  #go { background:var(--ok); } #stop { background:var(--bad); font-weight:700; }
+  .plots { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  @media (max-width: 1200px) { .plots { grid-template-columns: 1fr; } }
+  canvas { width:100%; height:260px; display:block; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td, th { border-bottom:1px solid var(--line); padding:4px 6px; text-align:left; }
+  .mute { color:var(--mute); font-size:12px; }
+  #msg { min-height:20px; font-size:14px; margin-top:6px; }
+  a { color:var(--acc); }
+</style>
+</head>
+<body>
+<header>
+  <h1>AMR U3: control de velocidad de rueda y trayectorias</h1>
+  <span id="conn" class="pill">...</span>
+  <span id="phase" class="pill">sin corrida</span>
+  <span id="demo" class="pill" style="display:none">ROBOT VIRTUAL</span>
+</header>
+<main>
+  <div>
+    <div class="card">
+      <h2>Trayectoria</h2>
+      <div class="seg" id="modes" style="display:none"><button data-m="diff">Diferencial (gira)</button><button data-m="omni" class="on">Omni (sin girar)</button></div>
+      <div class="mute" id="modehelp" style="margin-bottom:6px">Movimiento omni: el robot mantiene su orientación inicial (0°, giroscopio) y se traslada en cualquier dirección con las 3 ruedas.</div>
+      <div class="seg" id="kinds">
+        <button data-k="line" class="on">Recta</button><button data-k="circle">Círculo</button><button data-k="square">Cuadrado</button>
+      </div>
+      <div class="mute" style="margin:4px 0 2px">Perfil de velocidad</div>
+      <div class="seg" id="profiles" style="flex-wrap:wrap"></div>
+      <div id="params"></div>
+      <label>Aceleración del perfil [m/s²] <input id="p_acc" type="number" step="0.1"></label>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Calibración en el piso</h2>
+      <p class="mute" style="margin:0 0 6px">El robot gira en su lugar a 80 y 160 RPM por rueda (ambos sentidos, ~8 s) y ajusta el feedforward de las 3 ruedas. Hazla en cada piso nuevo (cuarto, escuela).</p>
+      <button class="big" id="cal" style="background:#7c3aed">Calibrar en el piso</button>
+      <div id="calmsg" class="mute"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Odometría</h2>
+      <label>Fuente del rumbo <select id="hsrc"><option value="gyro">giroscopio</option><option value="encoders">encoders</option></select></label>
+      <div class="mute" id="odok"></div>
+      <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:6px">
+        <b style="font-size:14px">1. Distancia (k_lin)</b>
+        <label>Recta de [m] <input id="oc_d" type="number" step="0.1" value="0.8"></label>
+        <div class="mute">Usa la velocidad y aceleración del perfil elegido arriba.</div>
+        <button id="oc_line" style="padding:6px 10px">Correr recta de calibración (PID)</button>
+        <div class="mute" id="oc_line_res"></div>
+        <label>Distancia medida con cinta [m] <input id="oc_meas" type="number" step="0.005"></label>
+        <button id="oc_line_apply" style="padding:6px 10px">Aplicar k_lin</button>
+      </div>
+      <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:6px">
+        <b style="font-size:14px">2. Giro (k_rot)</b>
+        <label>Vueltas en su lugar <input id="oc_turns" type="number" step="1" value="2"></label>
+        <label>ω [rad/s] <input id="oc_w" type="number" step="0.5" value="3"></label>
+        <button id="oc_spin" style="padding:6px 10px">Correr giro de calibración (PID)</button>
+        <div class="mute" id="oc_spin_res"></div>
+        <label>Ángulo real medido [°] (vacío = giroscopio) <input id="oc_ang" type="number" step="1"></label>
+        <button id="oc_spin_apply" style="padding:6px 10px">Aplicar k_rot</button>
+      </div>
+      <div class="mute" id="oc_msg" style="margin-top:6px"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Controlador de rueda</h2>
+      <div class="seg" id="ctrls"><button data-c="P" class="on">P</button><button data-c="PID">PID (extra)</button></div>
+      <label>Kp [PWM/RPM] <input id="kp" type="number" step="0.05"></label>
+      <label>Ki [PWM/(RPM·s)] <input id="ki" type="number" step="0.5"></label>
+      <label>Kd [PWM/(RPM/s)] <input id="kd" type="number" step="0.001"></label>
+      <label>Feedforward (modelo estático) <input id="ff" type="checkbox"></label>
+      <label>Etiqueta <input id="label" type="text" style="width:150px"></label>
+      <button class="big" id="go">Iniciar corrida</button>
+      <button class="big" id="stop">STOP</button>
+      <div id="msg"></div>
+      <details style="margin-top:8px"><summary>Ajustes avanzados</summary>
+        <label>Anticipación del feedforward [s] <input id="s_ff_lookahead" type="number" step="0.02"></label>
+        <label>Rumbo omni Kp [1/s] <input id="s_k_head" type="number" step="0.5"></label>
+        <label>Rumbo omni Ki [1/s²] <input id="s_ki_head" type="number" step="0.5"></label>
+        <label>k_rot (giro real / giro de ruedas) <input id="s_k_rot" type="number" step="0.01"></label>
+        <label>k_lin (distancia real / de ruedas) <input id="s_k_lin" type="number" step="0.01"></label>
+        <button id="krot" style="padding:6px 10px;margin-bottom:6px">Calcular k_rot de las corridas (giroscopio)</button>
+        <label>Aceleración v [m/s²] <input id="s_acc_max" type="number" step="0.1"></label>
+        <label>Aceleración ω [rad/s²] <input id="s_alpha_max" type="number" step="0.5"></label>
+        <label>Empujón de arranque [PWM] <input id="s_start_pwm" type="number" step="5"></label>
+        <label>Límite del integral [PWM] <input id="s_i_max" type="number" step="10"></label>
+        <label>Reposo inicial [s] <input id="s_rest_before_s" type="number" step="0.5"></label>
+        <div class="mute">Feedforward por rueda: PWM = offset + RPM / K</div>
+        <label>Offset r1 / r2 / r3 <span><input id="s_off0" type="number" step="1" style="width:55px"><input id="s_off1" type="number" step="1" style="width:55px"><input id="s_off2" type="number" step="1" style="width:55px"></span></label>
+        <label>K r1 / r2 / r3 <span><input id="s_k0" type="number" step="0.05" style="width:55px"><input id="s_k1" type="number" step="0.05" style="width:55px"><input id="s_k2" type="number" step="0.05" style="width:55px"></span></label>
+        <button id="savest" style="padding:6px 10px">Guardar ajustes</button> <button id="resetst" style="padding:6px 10px">Valores por defecto</button>
+        <div id="stmsg" class="mute"></div>
+      </details>
+      <p class="mute">Antes de correr: robot en el piso con espacio libre. El robot queda quieto 1.5 s (bias del giroscopio) y luego arranca.</p>
+    </div>
+  </div>
+  <div>
+    <div class="plots">
+      <div class="card"><h2>Trayectoria (odometría vs ideal)</h2><canvas id="cxy"></canvas></div>
+      <div class="card"><h2>Velocidad de ruedas [RPM]</h2><canvas id="cw"></canvas>
+        <div class="mute">línea punteada = referencia; morado rueda 1, rojo rueda 2, azul rueda 3</div></div>
+      <div class="card"><h2>v [m/s] y ω [rad/s]</h2><canvas id="cv"></canvas>
+        <div class="mute">verde v, azul ω; punteadas = referencia</div></div>
+      <div class="card"><h2>PWM</h2><canvas id="cp"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2>Telemetría en vivo</h2>
+      <div id="tel" style="font-family:ui-monospace,monospace;font-size:13px;white-space:pre-wrap">sin datos</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2>Corridas</h2>
+      <table><thead><tr><th>Corrida</th><th>Resultado</th><th>Ctrl</th><th>Err. RMS rueda 2</th><th>Err. perm. rueda 2</th><th>Desv. trayect. RMS</th><th>Error final</th><th>θ final / ideal</th><th>Gráficas</th></tr></thead>
+      <tbody id="runs"></tbody></table>
+    </div>
+  </div>
+</main>
+<script>
+let mode = "omni", kind = "line", ctrl = "P", defaults = null, loaded = false;
+const NAMES = {v:"v [m/s]", distance:"Distancia [m]", radius:"Radio [m]", turns:"Vueltas", side:"Lado [m]", w_turn:"ω de giro [rad/s]"};
+const $ = id => document.getElementById(id);
+let profile = 0;
+function fillProfiles() {
+  $("profiles").innerHTML = defaults.profiles.map((p, i) => `<button data-i="${i}" class="${i===profile?"on":""}">${p.name}<br><small>${p.v} m/s</small></button>`).join("");
+  document.querySelectorAll("#profiles button").forEach(b => b.onclick = () => { profile = +b.dataset.i; fillProfiles(); fillParams(); });
+}
+function fillParams() {
+  const p = Object.assign({}, (mode === "omni" ? defaults.traj_omni : defaults.traj)[kind]);
+  if ("v" in p) p.v = defaults.profiles[profile].v;
+  setTimeout(() => { $("p_acc").value = defaults.profiles[profile].acc; }, 0);
+  $("params").innerHTML = Object.keys(p).map(k => `<label>${NAMES[k]||k} <input id="p_${k}" type="number" step="0.05" value="${p[k]}"></label>`).join("");
+}
+function fillGains() {
+  const g = defaults.gains[ctrl];
+  $("kp").value = g.kp; $("ki").value = g.ki; $("kd").value = g.kd; $("ff").checked = g.ff;
+  $("ki").disabled = $("kd").disabled = (ctrl === "P");
+}
+document.querySelectorAll("#kinds button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#kinds button").forEach(x => x.classList.remove("on")); b.classList.add("on"); kind = b.dataset.k; fillParams(); });
+document.querySelectorAll("#modes button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#modes button").forEach(x => x.classList.remove("on")); b.classList.add("on"); mode = b.dataset.m;
+  $("modehelp").textContent = mode === "omni" ? "El robot mantiene su orientación inicial (0°, giroscopio) y se traslada en cualquier dirección con las 3 ruedas." : "El robot gira hacia donde va, como un diferencial.";
+  fillParams(); });
+document.querySelectorAll("#ctrls button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#ctrls button").forEach(x => x.classList.remove("on")); b.classList.add("on"); ctrl = b.dataset.c; fillGains(); });
+async function post(url, body) {
+  const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{})});
+  return r.json();
+}
+$("go").onclick = async () => {
+  const params = {}; Object.keys((mode === "omni" ? defaults.traj_omni : defaults.traj)[kind]).forEach(k => params[k] = parseFloat($("p_"+k).value));
+  const gains = {kp: parseFloat($("kp").value), ki: parseFloat($("ki").value)||0, kd: parseFloat($("kd").value)||0, ff: $("ff").checked};
+  const r = await post("/api/run", {kind, ctrl, mode, params, gains, label: $("label").value, acc: parseFloat($("p_acc").value)});
+  $("msg").textContent = r.ok ? "Corrida iniciada: " + r.run_id : "Error: " + r.error;
+  $("msg").style.color = r.ok ? "var(--ok)" : "var(--bad)";
+};
+const SK = ["ff_lookahead","k_head","ki_head","k_rot","k_lin","acc_max","alpha_max","start_pwm","i_max","rest_before_s"];
+function fillSettings(st) {
+  $("hsrc").value = st.heading_source;
+  $("odok").textContent = `k_lin = ${st.k_lin}   k_rot = ${st.k_rot}`;
+  SK.forEach(k => $("s_"+k).value = st[k]);
+  [0,1,2].forEach(i => { $("s_off"+i).value = st.ff_offset[i]; $("s_k"+i).value = st.ff_k[i]; });
+}
+$("savest").onclick = async () => {
+  const d = {}; SK.forEach(k => d[k] = parseFloat($("s_"+k).value));
+  d.ff_offset = [0,1,2].map(i => parseFloat($("s_off"+i).value)); d.ff_k = [0,1,2].map(i => parseFloat($("s_k"+i).value));
+  const r = await post("/api/settings", d);
+  $("stmsg").textContent = r.ok ? "Guardado" : "Error: " + r.error; if (r.settings) fillSettings(r.settings);
+};
+$("krot").onclick = async () => {
+  const r = await post("/api/krot");
+  $("stmsg").textContent = r.ok ? `k_rot = ${r.k_rot} (mediana de ${r.n} corridas: ${r.values.join(", ")})` : "Error: " + r.error;
+  if (r.settings) fillSettings(r.settings);
+};
+$("resetst").onclick = async () => { const r = await post("/api/settings/reset"); fillSettings(r.settings); $("stmsg").textContent = "Valores por defecto"; };
+$("cal").onclick = async () => {
+  if (!confirm("El robot va a girar en su lugar ~8 s. ¿Está en el piso con espacio?")) return;
+  const r = await post("/api/calibrate"); $("calmsg").textContent = r.ok ? "Calibrando..." : "Error: " + r.error;
+};
+let calWasRunning = false, ocLine = null, ocSpin = null;
+async function ocRun(kind, params) {
+  const g = defaults.gains.PID;
+  const r = await post("/api/run", {kind, ctrl:"PID", params, gains:g, label:"calibracion odometria " + kind, acc: parseFloat($("p_acc").value)});
+  $("oc_msg").textContent = r.ok ? "Corriendo " + r.run_id : "Error: " + r.error;
+  return r.ok ? r.run_id : null;
+}
+$("oc_line").onclick = async () => { ocLine = await ocRun("line", {v: parseFloat($("p_v").value), distance: parseFloat($("oc_d").value)}); };
+$("oc_spin").onclick = async () => { ocSpin = await ocRun("spin", {w: parseFloat($("oc_w").value), turns: parseFloat($("oc_turns").value)}); };
+async function ocApply(run_id, measured) {
+  if (!run_id) { $("oc_msg").textContent = "Primero corre la prueba de calibración"; return; }
+  const r = await post("/api/odocal/apply", {run_id, measured});
+  $("oc_msg").textContent = r.ok ? ("Aplicado " + JSON.stringify(r.new) + " (" + r.info + ")") : "Error: " + r.error;
+  if (r.settings) fillSettings(r.settings);
+}
+$("oc_line_apply").onclick = () => ocApply(ocLine, $("oc_meas").value);
+$("oc_spin_apply").onclick = () => ocApply(ocSpin, $("oc_ang").value);
+$("hsrc").onchange = async () => { const r = await post("/api/settings", {heading_source: $("hsrc").value});
+  $("oc_msg").textContent = r.ok ? "Fuente del rumbo: " + $("hsrc").value : "Error: " + r.error; };
+$("stop").onclick = async () => { await post("/api/stop"); $("msg").textContent = "STOP enviado"; $("msg").style.color = "var(--bad)"; };
+
+function chart(cv, series, opts={}) {
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr; const g = cv.getContext("2d"); g.scale(dpr,dpr);
+  g.fillStyle = "#fff"; g.fillRect(0,0,W,H);
+  let xs=[], ys=[]; series.forEach(s => s.pts.forEach(p => { if (p[0]!=null && p[1]!=null) { xs.push(p[0]); ys.push(p[1]); } }));
+  if (!xs.length) { g.fillStyle="#94a3b8"; g.fillText("sin datos", 10, 20); return; }
+  let x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+  if (opts.equal) {
+    // same metres per pixel on both axes: widen the axis that has more room on screen
+    const pw = W-36-8, ph = H-30, c=[(x0+x1)/2,(y0+y1)/2];
+    let sxr = Math.max(x1-x0, 0.2)*1.1, syr = Math.max(y1-y0, 0.2)*1.1;
+    const mpp = Math.max(sxr/pw, syr/ph); sxr = mpp*pw; syr = mpp*ph;
+    x0=c[0]-sxr/2; x1=c[0]+sxr/2; y0=c[1]-syr/2; y1=c[1]+syr/2;
+  }
+  if (x1-x0 < 1e-6) x1 = x0+1; if (y1-y0 < 1e-6) { y0-=1; y1+=1; }
+  const pad=36, sx = v => pad + (v-x0)/(x1-x0)*(W-pad-8), sy = v => H-22 - (v-y0)/(y1-y0)*(H-30);
+  g.strokeStyle="#e2e8f0"; g.fillStyle="#64748b"; g.font="11px system-ui"; g.lineWidth=1;
+  for (let i=0;i<=4;i++) { const yv=y0+(y1-y0)*i/4, y=sy(yv); g.beginPath(); g.moveTo(pad,y); g.lineTo(W-8,y); g.stroke(); g.fillText(yv.toFixed(2), 2, y+4); }
+  for (let i=0;i<=4;i++) { const xv=x0+(x1-x0)*i/4; g.fillText(xv.toFixed(opts.equal?2:1), sx(xv)-10, H-6); }
+  series.forEach(s => { g.strokeStyle=s.c; g.lineWidth=s.w||1.6; g.setLineDash(s.d?[5,4]:[]); g.beginPath(); let first=true;
+    s.pts.forEach(p => { if (p[0]==null||p[1]==null) return; const X=sx(p[0]), Y=sy(p[1]); if (first) { g.moveTo(X,Y); first=false; } else g.lineTo(X,Y); });
+    g.stroke(); }); g.setLineDash([]);
+}
+const WC = ["#7c3aed","#dc2626","#2563eb"];
+function f(v, d=1, k=1) { return v==null ? "-" : (v*k).toFixed(d); }
+async function poll() {
+  try {
+    const s = await (await fetch("/api/status")).json();
+    if (!loaded) { defaults = s.defaults; defaults.profiles = s.profiles; fillProfiles(); fillParams(); fillGains(); fillSettings(s.settings); loaded = true; }
+    if (s.calibration) {
+      const c = s.calibration;
+      if (c.phase !== "done") { $("calmsg").textContent = "Calibrando: " + c.phase; calWasRunning = true; }
+      else { $("calmsg").textContent = c.result + (c.fit ? ": offset " + c.fit.offset.join(" / ") + " PWM, K " + c.fit.k.join(" / ") : "");
+             if (calWasRunning) { fillSettings(s.settings); calWasRunning = false; } }
+    }
+    $("demo").style.display = s.demo ? "" : "none";
+    const ok = s.connected && s.telemetry_age != null && s.telemetry_age < 0.5;
+    $("conn").textContent = ok ? "conectado" + (s.gyro_ok ? " + IMU" : " (IMU sin datos)") : ("sin conexión " + (s.error||""));
+    $("conn").className = "pill " + (ok ? "ok" : "bad");
+    $("phase").textContent = s.running ? ("corriendo: " + s.phase) : (s.result ? "última: " + s.result : "sin corrida");
+    const L = s.live;
+    chart($("cxy"), [{pts: s.full_path.map(p=>[p[0],p[1]]), c:"#0f172a", d:true}, {pts: s.full_path.map(p=>[p[2],p[3]]), c:"#16a34a", w:2.2}], {equal:true});
+    const ws = []; [1,2,3].forEach(i => { ws.push({pts:L.map(r=>[r.t,r["ref"+i]]), c:WC[i-1], d:true, w:1.1}); ws.push({pts:L.map(r=>[r.t,r["rpm"+i]]), c:WC[i-1]}); });
+    chart($("cw"), ws);
+    chart($("cv"), [{pts:L.map(r=>[r.t,r.v_ref]), c:"#16a34a", d:true}, {pts:L.map(r=>[r.t,r.v]), c:"#16a34a"},
+                    {pts:L.map(r=>[r.t,r.w_ref]), c:"#2563eb", d:true}, {pts:L.map(r=>[r.t,r.w]), c:"#2563eb"}]);
+    chart($("cp"), [1,2,3].map(i => ({pts:L.map(r=>[r.t,r["pwm"+i]]), c:WC[i-1]})));
+    const T = s.tel;
+    $("tel").textContent = !T ? "sin datos" :
+      `Frecuencia: ${T.hz.toFixed(1)} Hz   t Arduino: ${T.t_ms} ms   modo: ${["lazo cerrado","lazo abierto","PWM directo"][T.mode]||T.mode}   líneas malas: ${T.bad_lines}\n` +
+      `Encoders [cuentas]   r1 ${T.enc[0]}   r2 ${T.enc[1]}   r3 ${T.enc[2]}\n` +
+      `Velocidad cruda [RPM] r1 ${T.rpm_raw[0]}   r2 ${T.rpm_raw[1]}   r3 ${T.rpm_raw[2]}\n` +
+      `PWM aplicado         r1 ${T.pwm[0]}   r2 ${T.pwm[1]}   r3 ${T.pwm[2]}\n` +
+      `Giroscopio Z ${T.gyro_z.toFixed(2)} °/s   yaw ${T.yaw.toFixed(1)}°   acel ${T.acc.map(a=>a.toFixed(2)).join(" / ")} m/s²\n` +
+      `Edad IMU [ms]  gyro ${T.gyro_age}   acel ${T.acc_age}   yaw ${T.yaw_age}`;
+    const findRun = id => s.runs.find(r => r.run_id === id);
+    if (ocLine && findRun(ocLine)) { const r = findRun(ocLine);
+      $("oc_line_res").textContent = r.result === "completada" ? `Odometría: ${Math.hypot(r.final_x, r.final_y).toFixed(3)} m. Mide la distancia real del robot y escríbela abajo.` : r.result; }
+    if (ocSpin && findRun(ocSpin)) { const r = findRun(ocSpin);
+      $("oc_spin_res").textContent = r.result === "completada" ? `Encoders ${r.final_th_enc_deg.toFixed(1)}°, giroscopio ${r.final_th_gyro_deg.toFixed(1)}°, ideal ${r.final_th_ideal_deg.toFixed(0)}°` : r.result; }
+    $("runs").innerHTML = s.runs.map(r => `<tr><td>${r.label||""}<div class="mute">${r.run_id}</div></td><td>${r.result}</td>
+      <td>${r.mode==="omni"?"omni ":""}${r.ctrl} kp ${r.gains?r.gains.kp:""}${r.ctrl==="PID"?" ki "+r.gains.ki:""}${r.gains&&r.gains.ff?" +FF":""}</td>
+      <td>${f(r.wheel2_err_rms_rpm)} RPM</td><td>${f(r.wheel2_ss_err_rpm)} RPM</td><td>${f(r.path_dev_rms_m,1,100)} cm</td><td>${f(r.final_pos_err_m,1,100)} cm</td>
+      <td>${f(r.final_th_deg,0)}° / ${f(r.final_th_ideal_deg,0)}°</td>
+      <td>${["wheels","velocity","xy","orientation"].map(n=>`<a target="_blank" href="/runs/${r.run_id}/${n}.png">${n}</a>`).join(" ")}</td></tr>`).join("");
+  } catch (e) { $("conn").textContent = "sin respuesta del servidor"; $("conn").className = "pill bad"; }
+  setTimeout(poll, 400);
+}
+poll();
+</script>
+</body>
+</html>

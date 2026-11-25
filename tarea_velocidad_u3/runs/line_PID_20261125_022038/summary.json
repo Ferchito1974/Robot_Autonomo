@@ -1,0 +1,65 @@
+{
+  "duration_s": 3.347,
+  "wheel1_err_rms_rpm": 3.917446004263122e-14,
+  "wheel1_ss_err_rpm": null,
+  "wheel1_ref_mean_abs": 0.0,
+  "wheel2_err_rms_rpm": 32.596739255009176,
+  "wheel2_ss_err_rpm": -6.5776448527410825,
+  "wheel2_ref_mean_abs": 176.1803427818817,
+  "wheel3_err_rms_rpm": 33.19277750140904,
+  "wheel3_ss_err_rpm": 7.452661022661139,
+  "wheel3_ref_mean_abs": 176.1803427818817,
+  "pwm_saturated_pct": 0.0,
+  "v_err_rms": 0.0799872984888308,
+  "w_err_rms": 0.07075636684108012,
+  "v_lat_rms": 0.0036278841186874007,
+  "path_dev_rms_m": 0.0160362031561298,
+  "path_dev_max_m": 0.02898297136887738,
+  "final_x": 1.0219605635262017,
+  "final_y": -0.013393389054579808,
+  "final_x_ideal": 1.000019,
+  "final_y_ideal": 0.0,
+  "final_pos_err_m": 0.025706323742256156,
+  "final_th_deg": -1.6369999999999998,
+  "final_th_ideal_deg": 0.0,
+  "final_th_enc_deg": -0.8866008674246011,
+  "final_th_gyro_deg": -1.6369999999999998,
+  "distance_m": 1.0306014734741393,
+  "run_id": "line_PID_20261125_022038",
+  "kind": "line",
+  "params": {
+    "v": 0.5,
+    "distance": 1.0
+  },
+  "ctrl": "PID",
+  "gains": {
+    "kp": 0.3,
+    "ki": 4.0,
+    "kd": 0.0,
+    "ff": true
+  },
+  "label": "calibracion odometria line",
+  "settings": {
+    "heading_source": "gyro",
+    "k_rot": 1.091,
+    "k_lin": 1.0616,
+    "acc_max": 1.5,
+    "alpha_max": 12.0,
+    "start_pwm": 35.0,
+    "i_max": 120.0,
+    "rest_before_s": 1.5,
+    "ff_offset": [
+      5.2,
+      7.1,
+      5.7
+    ],
+    "ff_k": [
+      2.418,
+      2.25,
+      2.105
+    ]
+  },
+  "result": "completada",
+  "real": true,
+  "date": "2026-11-25T02:20:43"
+}
