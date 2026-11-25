@@ -5,6 +5,9 @@ Control de velocidad de las 3 ruedas de un robot omnidireccional (FutBot Omni) c
 **P** y un **PID** (reto extra), y ejecución de trayectorias **recta, círculo y cuadrado** a partir
 de referencias de velocidad, con odometría por encoders y giroscopio.
 
+**Informe:** [`reporte/AMR_ASS1_U3_Fernando_Euan.pdf`](reporte/AMR_ASS1_U3_Fernando_Euan.pdf)
+(se regenera con `../tarea_odometria/venv/bin/python reporte/build_report.py` desde esta carpeta).
+
 ---
 
 ## Qué hace
