@@ -72,7 +72,7 @@ W_HOLD_MAX = 2.0                  # rad/s, limit of the heading hold (3.0 made t
 
 # Traction control (omni): slip = |w_wheels - w_gyro|. Real 25-nov: runs without problems stay below
 # ~1 rad/s; runs where the heading kicked 20-60 deg reached 1.8-5 rad/s.
-TRACTION = 1.0                    # 1 on, 0 off
+TRACTION = 0.0                    # 1 on, 0 off (real 25-nov 16:01: no measurable gain at 1.8 m/s^2; optional)
 SLIP_ON = 1.0                     # rad/s, slip above this slows the reference down
 TC_GAIN = 0.6                     # scale reduction per rad/s of slip above SLIP_ON
 TC_SCALE_MIN = 0.4                # the reference never goes slower than 40 %
