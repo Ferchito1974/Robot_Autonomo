@@ -1,4 +1,7 @@
 {
+  "traction": 1.0,
+  "slip_on": 1.0,
+  "s_curve": 1.0,
   "heading_source": "gyro",
   "k_head": 4.0,
   "ki_head": 2.0,
@@ -11,16 +14,13 @@
   "i_max": 120.0,
   "rest_before_s": 1.5,
   "ff_offset": [
-    0.0,
-    8.9,
-    17.6
+    6.5,
+    6.1,
+    11.0
   ],
   "ff_k": [
-    2.002,
-    2.32,
-    2.38
-  ],
-  "s_curve": 1.0,
-  "traction": 1.0,
-  "slip_on": 1.0
+    2.391,
+    2.207,
+    2.168
+  ]
 }

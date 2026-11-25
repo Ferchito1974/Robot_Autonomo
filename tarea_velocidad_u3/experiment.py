@@ -144,11 +144,16 @@ class Experiment:
             v_ref, w_ref = math.hypot(vx_ref, vy_ref), 0.0
             th_m = e["th"]
             e_th = 0.0 - th_m
+            # while the wheels slip (traction scale < 1) the heading correction is limited too and its
+            # integral frozen: on the real robot (25-nov circle 155256) a saturated correction made the
+            # wheels spin -200 deg while the robot only turned +60 deg
+            tc = self.st["traction"] >= 0.5
+            w_lim = config.W_HOLD_MAX * (self.scale if tc else 1.0)
             i_new = self.head_i + self.st["ki_head"] * e_th * dt
             w_raw = self.st["k_head"] * e_th + i_new
-            if abs(w_raw) < config.W_HOLD_MAX:                  # anti-windup
+            if abs(w_raw) < w_lim and not (tc and self.scale < 0.99):   # anti-windup + freeze while slipping
                 self.head_i = max(-1.0, min(1.0, i_new))
-            w_cmd = max(-config.W_HOLD_MAX, min(config.W_HOLD_MAX, self.st["k_head"] * e_th + self.head_i))
+            w_cmd = max(-w_lim, min(w_lim, self.st["k_head"] * e_th + self.head_i))
             fwd = vx_ref * math.cos(th_m) + vy_ref * math.sin(th_m)
             left = -vx_ref * math.sin(th_m) + vy_ref * math.cos(th_m)
             refs = kinematics.wheel_rpm_body(fwd, left, w_cmd, self.st["k_lin"], self.st["k_rot"])
