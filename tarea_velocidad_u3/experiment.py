@@ -26,7 +26,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 RUNS = os.path.join(BASE, "runs")
 os.makedirs(RUNS, exist_ok=True)
 
-COLS = ["t", "v_ref", "w_ref", "w_cmd", "vx_ref", "vy_ref", "vxw", "vyw", "v", "v_lat", "w", "w_enc", "w_gyro", "x", "y", "th", "th_enc", "th_gyro",
+COLS = ["t", "tau", "scale", "slip", "v_ref", "w_ref", "w_cmd", "vx_ref", "vy_ref", "vxw", "vyw", "v", "v_lat", "w", "w_enc", "w_gyro", "x", "y", "th", "th_enc", "th_gyro",
         "x_ideal", "y_ideal", "th_ideal",
         "ref1", "ref2", "ref3", "rpm1", "rpm2", "rpm3", "u1", "u2", "u3", "pwm1", "pwm2", "pwm3",
         "ff2", "p2", "i2", "ff3", "p3", "i3", "gyro_ok"]
@@ -70,6 +70,7 @@ class Experiment:
             self.st["acc_max"] = float(acc)          # speed profile of this run
         self.rev_n, self.sat_n = [0, 0, 0], [0, 0, 0]
         self.head_i = 0.0                                # integral of the heading error (omni mode)
+        self.tau, self.scale, self.t_end = 0.0, 1.0, None    # traction control: reference time and its rate
         smooth = self.st["s_curve"] >= 0.5
         self.ref = (trajectories.OmniReference(kind, params, self.st["acc_max"], smooth) if mode == "omni" else
                     trajectories.Reference(kind, params, self.st["acc_max"], self.st["alpha_max"], smooth))
@@ -124,9 +125,22 @@ class Experiment:
         dt = e["dt"] if e["dt"] > 0 else config.DT
         t = (s.t_ms - self.t_start) / 1000.0
         x, y, th = self.ideal
+        # traction control: slip = |yaw rate of the wheels - yaw rate of the gyroscope|. While the wheels
+        # slip, the reference time advances slower (scale < 1); the path geometry does not change.
+        slip = abs(e["w_enc"] - e["w_gyro"]) if e["gyro_ok"] else 0.0
+        if self.mode == "omni" and self.st["traction"] >= 0.5:
+            over = slip - self.st["slip_on"]
+            target = 1.0 if over <= 0 else max(config.TC_SCALE_MIN, 1.0 - config.TC_GAIN * over)
+            rate = config.TC_DOWN if target < self.scale else config.TC_UP
+            self.scale += max(-rate * dt, min(rate * dt, target - self.scale))
+        else:
+            self.scale = 1.0
+        self.tau += self.scale * dt
+        tr = self.tau
         if self.mode == "omni":
             # world velocity -> body frame with the measured heading; heading held at 0 (initial)
-            vx_ref, vy_ref = self.ref.step(t, dt)
+            vx_ref, vy_ref = self.ref.step(tr, dt)
+            vx_ref, vy_ref = vx_ref * self.scale, vy_ref * self.scale
             v_ref, w_ref = math.hypot(vx_ref, vy_ref), 0.0
             th_m = e["th"]
             e_th = 0.0 - th_m
@@ -138,7 +152,8 @@ class Experiment:
             fwd = vx_ref * math.cos(th_m) + vy_ref * math.sin(th_m)
             left = -vx_ref * math.sin(th_m) + vy_ref * math.cos(th_m)
             refs = kinematics.wheel_rpm_body(fwd, left, w_cmd, self.st["k_lin"], self.st["k_rot"])
-            fx, fy = self.ref.at(t + self.st["ff_lookahead"])
+            fx, fy = self.ref.at(tr + self.st["ff_lookahead"])
+            fx, fy = fx * self.scale, fy * self.scale
             refs_ff = kinematics.wheel_rpm_body(fx * math.cos(th_m) + fy * math.sin(th_m),
                                                 -fx * math.sin(th_m) + fy * math.cos(th_m), w_cmd,
                                                 self.st["k_lin"], self.st["k_rot"])
@@ -152,7 +167,7 @@ class Experiment:
             refs = kinematics.wheel_rpm(v_ref, w_ref, self.st["k_lin"], self.st["k_rot"])
             refs_ff = kinematics.wheel_rpm(*self.ref.at(t + self.st["ff_lookahead"]), self.st["k_lin"], self.st["k_rot"])
         meas = (e["rpm1"], e["rpm2"], e["rpm3"])
-        moving = t <= self.ref.T
+        moving = self.tau <= self.ref.T
         if moving:
             u = [c.step(r, m, dt, rf) for c, r, m, rf in zip(self.ctrls, refs, meas, refs_ff)]
             self.link.raw_pwm(*[int(round(x)) for x in u])
@@ -174,12 +189,14 @@ class Experiment:
         c2, c3 = self.ctrls[1].terms, self.ctrls[2].terms
         if self.mode == "omni":
             e = dict(e, v=math.hypot(e["vxw"], e["vyw"]))           # speed in the world frame
-        row = dict(e, v_ref=v_ref, w_ref=w_ref, w_cmd=w_cmd, vx_ref=vx_ref, vy_ref=vy_ref, x_ideal=self.ideal[0], y_ideal=self.ideal[1], th_ideal=self.ideal[2],
+        row = dict(e, slip=slip, scale=self.scale, tau=self.tau, v_ref=v_ref, w_ref=w_ref, w_cmd=w_cmd, vx_ref=vx_ref, vy_ref=vy_ref, x_ideal=self.ideal[0], y_ideal=self.ideal[1], th_ideal=self.ideal[2],
                    ref1=refs[0], ref2=refs[1], ref3=refs[2], u1=u[0], u2=u[1], u3=u[2],
                    ff2=c2[0], p2=c2[1], i2=c2[2], ff3=c3[0], p3=c3[1], i3=c3[2])
         self.rows.append(row)
         self.live = row
-        if t > self.ref.T + config.REST_AFTER_S:
+        if not moving and self.t_end is None:
+            self.t_end = t
+        if self.t_end is not None and t > self.t_end + config.REST_AFTER_S:
             self._finish("completada")
 
     def _finish(self, result):
@@ -216,8 +233,12 @@ def summarize(rows, ref):
     if not rows:
         return {}
     c = {k: np.array([r[k] for r in rows], dtype=float) for k in rows[0] if isinstance(rows[0][k], (int, float))}
-    mov = c["t"] <= ref.T
+    mov = c["tau"] <= ref.T if "tau" in c else c["t"] <= ref.T
     out = {"duration_s": float(c["t"][-1])}
+    if "scale" in c:
+        out["traction_min_scale"] = float(c["scale"].min())
+        out["traction_active_pct"] = float(100 * (c["scale"] < 0.99).mean())
+        out["slip_max"] = float(np.nanmax(c["slip"]))
     for i in (1, 2, 3):
         e = (c[f"ref{i}"] - c[f"rpm{i}"])[mov]
         act = np.abs(c[f"ref{i}"][mov]) > 5

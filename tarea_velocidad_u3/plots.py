@@ -82,6 +82,10 @@ def _xy_and_heading(rows, t, lab, d):
     ax.plot(t, np.degrees(col(rows, "th_ideal")), "k--", lw=1.1, label="ideal")
     ax.plot(t, np.degrees(col(rows, "th_enc")), color="#2563eb", lw=1.4, label="encoders")
     ax.plot(t, np.degrees(col(rows, "th_gyro")), color="#dc2626", lw=1.4, label="gyroscope")
-    ax.set_ylabel("Orientation θ [deg]"); ax.set_xlabel("Time [s]"); ax.grid(alpha=.3); ax.legend(fontsize=8)
+    ax.set_ylabel("Orientation θ [deg]"); ax.set_xlabel("Time [s]"); ax.grid(alpha=.3); ax.legend(fontsize=8, loc="upper left")
+    if "scale" in rows[0] and min(r["scale"] for r in rows) < 0.99:
+        a2 = ax.twinx()
+        a2.plot(t, col(rows, "scale"), color="#f59e0b", lw=1.2, label="traction scale")
+        a2.set_ylim(0, 1.05); a2.set_ylabel("Traction scale", color="#f59e0b"); a2.legend(fontsize=8, loc="upper right")
     ax.set_title(f"Robot orientation: {lab}")
     _save(fig, os.path.join(d, "orientation.png"))

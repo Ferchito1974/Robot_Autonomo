@@ -188,7 +188,7 @@ def api_settings():
         st = settings.save(d)
     except (ValueError, TypeError):
         return jsonify({"ok": False, "error": "valores invalidos"})
-    if not (st["s_curve"] in (0.0, 1.0) and 0 <= st["ff_lookahead"] <= 0.3 and 0 <= st["k_head"] <= 15 and 0 <= st["ki_head"] <= 20 and 0.7 <= st["k_rot"] <= 1.4 and 0.7 <= st["k_lin"] <= 1.4 and 0.1 <= st["acc_max"] <= 3 and 0.5 <= st["alpha_max"] <= 20 and st["start_pwm"] <= 120
+    if not (st["traction"] in (0.0, 1.0) and 0.2 <= st["slip_on"] <= 5 and st["s_curve"] in (0.0, 1.0) and 0 <= st["ff_lookahead"] <= 0.3 and 0 <= st["k_head"] <= 15 and 0 <= st["ki_head"] <= 20 and 0.7 <= st["k_rot"] <= 1.4 and 0.7 <= st["k_lin"] <= 1.4 and 0.1 <= st["acc_max"] <= 3 and 0.5 <= st["alpha_max"] <= 20 and st["start_pwm"] <= 120
             and st["i_max"] <= 255 and st["rest_before_s"] <= 5 and all(0.5 <= k <= 5 for k in st["ff_k"])
             and all(o <= 120 for o in st["ff_offset"])):
         settings.save(old)                        # keep the previous valid values

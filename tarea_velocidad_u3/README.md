@@ -86,7 +86,14 @@ Requisitos: Python 3.11 con `flask`, `numpy`, `matplotlib`, `pyserial`
 | 4 Muy rápido | 0.85 m/s | 2.0 m/s² | Piso liso (a 0.95 m/s las ruedas saturaban 30 % del tiempo) |
 
 Las rampas son **en S** (jerk limitado): la aceleración sube gradualmente, lo que reduce el derrape
-al arrancar. En el robot real, con aceleraciones de 2.2 a 2.5 m/s² el robot giraba 28 a 44° por
+al arrancar. Con rampas en S, el cuadrado omni a 0.75 m/s pasó de girar 28 a 44° por derrape a 16 a 24°,
+con error final de 0.2 a 0.7 cm.
+
+**Control de tracción** (opcional, en "Ajustes avanzados"): el derrape se mide como la diferencia entre
+la velocidad de giro de las ruedas y la del giroscopio. Si pasa de 1 rad/s, la referencia avanza más
+lento en el tiempo (hasta 40 %) y se recupera poco a poco; la forma de la trayectoria no cambia.
+Los cambios de escala son lentos (0.7 y 0.5 por segundo): en simulación, cambios rápidos frenaban tan
+fuerte que causaban más derrape. En el robot real, con aceleraciones de 2.2 a 2.5 m/s² el robot giraba 28 a 44° por
 derrape al iniciar cada lado del cuadrado; con 1.5 a 2.0 m/s², 5 a 17°.
 
 ---

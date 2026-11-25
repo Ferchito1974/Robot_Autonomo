@@ -23,12 +23,16 @@ class FakeLink:
     virtual = True
 
     def __init__(self, offsets=(18.0, 19.0, 14.0), gains=(2.30, 2.40, 2.25), tau=config.MOTOR_TAU_S,
-                 turn_slip=1.08, realtime=True, delay_ticks=2):
+                 turn_slip=1.08, realtime=True, delay_ticks=2, yaw_disturbance=None, grip_acc=None,
+                 slip_yaw_gain=0.8):
         self.connected, self.firmware, self.realtime = False, config.FIRMWARE, realtime
         self.log = collections.deque(maxlen=200)
         self.last_sample, self.last_rx, self.bad_lines = None, 0.0, 0
         self._subs, self._lock = [], threading.Lock()
         self.off, self.K, self.tau, self.slip = np.array(offsets), np.array(gains), tau, turn_slip
+        self.yaw_dist = yaw_disturbance          # f(t_s) -> extra yaw rate [rad/s] not seen by the wheels (slip test)
+        # acceleration-induced slip: above grip_acc [m/s^2] the robot yaws by slip_yaw_gain per m/s^2 of excess
+        self.grip_acc, self.slip_k, self.v_prev = grip_acc, slip_yaw_gain, (0.0, 0.0)
         self.raw = np.zeros(3)
         self.queue = [np.zeros(3)] * delay_ticks       # measured on the robot: applied PWM lags ~40 ms
         self.last_cmd = 0.0
@@ -85,6 +89,12 @@ class FakeLink:
             self.counts += self.rpm / 60.0 * config.COUNTS_PER_REV * h
             vx, vy, w = kinematics.body_velocity(self.rpm / kinematics.MS_TO_RPM)
             w *= self.slip
+            if self.yaw_dist is not None:
+                w += self.yaw_dist(self.t_ms / 1000.0)
+            if self.grip_acc is not None:
+                acc = math.hypot(vx - self.v_prev[0], vy - self.v_prev[1]) / h
+                self.v_prev = (vx, vy)
+                w += self.slip_k * max(0.0, acc - self.grip_acc)
             fwd, left = vy, -vx
             self.x += (fwd * math.cos(self.th) - left * math.sin(self.th)) * h
             self.y += (fwd * math.sin(self.th) + left * math.cos(self.th)) * h
