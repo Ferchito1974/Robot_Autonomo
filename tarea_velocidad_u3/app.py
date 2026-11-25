@@ -42,6 +42,12 @@ DEMO = os.environ.get("ROBOT_DEMO") == "1"
 if DEMO:
     from fake_link import FakeLink
     link = FakeLink()
+    # the virtual robot never touches the real calibration: own settings file (starts as a copy)
+    import shutil
+    _demo = os.path.join(BASE, "demo_settings.json")
+    if not os.path.exists(_demo) and os.path.exists(settings.FILE):
+        shutil.copy(settings.FILE, _demo)
+    settings.FILE = _demo
 else:
     from link import RobotLink
     link = RobotLink()
@@ -106,7 +112,8 @@ def api_status():
     keys = ("t", "x", "y", "x_ideal", "y_ideal", "v", "v_ref", "w", "w_ref", "ref1", "ref2", "ref3",
             "rpm1", "rpm2", "rpm3", "pwm1", "pwm2", "pwm3")
     runs = []
-    for d in sorted(os.listdir(experiment.RUNS), reverse=True)[:30]:
+    dirs = [d for d in os.listdir(experiment.RUNS) if os.path.isdir(os.path.join(experiment.RUNS, d))]
+    for d in sorted(dirs, key=lambda d: os.path.getmtime(os.path.join(experiment.RUNS, d)), reverse=True)[:30]:
         sm = experiment.load_json(os.path.join(experiment.RUNS, d, "summary.json"))
         if sm:
             runs.append({k: sm.get(k) for k in ("run_id", "label", "result", "kind", "ctrl", "gains",

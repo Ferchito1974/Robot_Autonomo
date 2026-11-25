@@ -9,3 +9,7 @@ app.pid
 # Virtual robot runs and quick tests
 **/runs/demo_*
 **/runs/lifted_*
+
+# Virtual robot settings and calibration log
+**/demo_settings.json
+**/demo_calibration_log.json

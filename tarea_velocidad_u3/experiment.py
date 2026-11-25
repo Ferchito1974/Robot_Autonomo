@@ -347,10 +347,11 @@ class FloorCalibration:
             self.points.append({"wheel": i + 1, "points_rpm_pwm": pts})
         self.fit = fit
         settings.save({"ff_offset": fit["offset"], "ff_k": fit["k"]})
-        log = load_json(os.path.join(BASE, "calibration_log.json")) or []
+        log_file = os.path.join(BASE, ("demo_" if getattr(self.link, "virtual", False) else "") + "calibration_log.json")
+        log = load_json(log_file) or []
         log.append({"date": time.strftime("%Y-%m-%dT%H:%M:%S"), "points": self.points, "fit": fit,
                     "real": not getattr(self.link, "virtual", False)})
-        save_json(os.path.join(BASE, "calibration_log.json"), log)
+        save_json(log_file, log)
 
     def _finish(self, result):
         if self.phase == "done":
